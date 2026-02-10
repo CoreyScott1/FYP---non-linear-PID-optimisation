@@ -1,6 +1,10 @@
+import math
 import random
-from simulation import evaluate_pid
+from model import PIDController
 import numpy as np
+import threading
+
+pid_controller = PIDController(Kp=10.0, Ki=10.0, Kd=8.0, gamma=0.4, mu=0.7, setpoint=2*math.pi/3)
 
 
 class agent:
@@ -12,13 +16,14 @@ class agent:
         self.History = []
 
         for i in range(dimension):
-            self.values.append(float(random.uniform(range_min, range_max)))
+            self.values.append(float(random.uniform(range_min[i], range_max[i])))
     
     def update_best_position(self):
         if self.bestPosition is None:
             self.bestPosition = [self.values.copy(), self.fitness]
 
         else:
+            print(self.fitness, self.bestPosition[1])
             if self.fitness < self.bestPosition[1]:
                 self.bestPosition = [self.values.copy(), self.fitness]
             else:
@@ -28,19 +33,29 @@ class agent:
         self.History.append((self.values, self.fitness))
 
 class agent_swarm:
-    def __init__(self, no_of_agents, dimension=3, range_min=0, range_max=100):
+    def __init__(self, no_of_agents, dimension=5, range_min=[0, 0, 0, 0, 0], range_max=[20, 20, 20, 1, 1]):
         self.agents = [agent(dimension, range_min, range_max) for _ in range(no_of_agents)]
         self.best_agent = self.agents[random.randint(0, no_of_agents -1)]
         self.intertia_weight =  0.768244
         self.cognitive_weight = 1.020288
         self.social_weight = 1.826533
+        self.limit_min = range_min
+        self.limit_max = range_max
+        self.update_threads = 0
 
 
     def update_fitness(self):
+
+        
+        for i, agent in enumerate(self.agents):
+            agent.fitness = pid_controller.complete_test(10.0, agent.values[0], agent.values[1], agent.values[2], agent.values[3], agent.values[4])
+            print(f"Agent {i}/{len(self.agents)}", end="\r")
+
         for agent in self.agents:
-            agent.fitness = evaluate_pid(agent.values[0], agent.values[1], agent.values[2])
             agent.update_best_position()
             agent.update_history()
+    
+        
         
     def get_best_agent(self):
         best_agent = min(self.agents, key=lambda agent: agent.fitness)
