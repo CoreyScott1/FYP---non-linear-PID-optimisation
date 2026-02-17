@@ -4,7 +4,7 @@ from model import PIDController
 import numpy as np
 import threading
 
-pid_controller = PIDController(Kp=10.0, Ki=10.0, Kd=8.0, gamma=0.4, mu=0.7, setpoint=2*math.pi/3)
+pid_controller = PIDController(setpoint=2*math.pi/3)
 
 
 class agent:

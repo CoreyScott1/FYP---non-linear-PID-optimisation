@@ -37,11 +37,29 @@ def sample_use():
 
 if __name__ == "__main__":
     swarm = agent_swarm(no_of_agents=10)
-    iterations = 30
+    iterations = 20
+
+    pid_controller = PIDController(setpoint=2*math.pi/3)
+    show_animation = True
+
 
     for i in range(iterations):
         print(f"Iteration {i+1}/{iterations}")
         swarm.update_positions()
+        print(f"Best Agent Fitness: {swarm.get_best_agent().fitness}")
+        print(f"Best Agent Parameters: {swarm.get_best_agent().values}")
+        if show_animation:
+            pid_controller.set_PID_params(*swarm.get_best_agent().values)
+            velocity_history, position_history, set_points = pid_controller.sim_run(time_limit=10.0, control_enabled=True)
+
+
+            xPos = [pid_controller.physical_params["l"] * math.cos(angle) for angle in position_history]
+            yPos = [pid_controller.physical_params["l"] * math.sin(angle) for angle in position_history]
+            set_points_x = [pid_controller.physical_params["l"] * math.cos(angle) for angle in set_points]
+            set_points_y = [pid_controller.physical_params["l"] * math.sin(angle) for angle in set_points]
+
+            create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
+
 
     agent_list = swarm.get_swarm_values()
 
@@ -69,5 +87,5 @@ if __name__ == "__main__":
     ]
 
 
-    animate_number_line(formatted_histories, ranges, 200)
+    animate_number_line(formatted_histories, ranges, 500)
     

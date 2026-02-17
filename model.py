@@ -3,26 +3,27 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
-physical_params = {
-    "l" : 5.0,  # length of the arm
-    "m" : 2.0,  # mass of the arm
-    "k" : [5.0], # spring constants
-    "kl" : [2.0], #spring lengths
-    "kp" : [(-7, 0)], # spring positions
-    "damping" : 0.9 # damping coefficient
-}
 
-
-running_params = {
-    "angle" : 0.0,
-    "angular_velocity" : 0.0,
-    "time_step" : 0.01,
-}
 
 class ControlBase():
-    def __init__(self, physical_params = physical_params, running_params = running_params):
-        self.physical_params = physical_params
-        self.running_params = running_params
+    def __init__(self):
+
+        self.physical_params = {
+        "l" : 5.0,  # length of the arm
+        "m" : 2.0,  # mass of the arm
+        "k" : [5.0], # spring constants
+        "kl" : [2.0], #spring lengths
+        "kp" : [(-7, 0)], # spring positions
+        "damping" : 0.9 # damping coefficient
+        }
+
+
+        self.running_params = {
+        "angle" : 0.0,
+        "angular_velocity" : 0.0,
+        "time_step" : 0.01,
+        }
+
 
     def arm_force(self, angle, angular_velocity=0):
         l, m, k, kl, kp, damping = map(self.physical_params.get, ("l", "m", "k", "kl", "kp", "damping"))
@@ -48,38 +49,44 @@ class ControlBase():
         
         return force
 
-    def velocity_update(self, current_velocity, force, time_step):
-        return current_velocity + (force * time_step)
+    def velocity_update(self, force, time_step):
+        new_velocity = self.running_params["angular_velocity"] + (force * time_step)
+        self.running_params["angular_velocity"] = new_velocity
+        return new_velocity
 
-    def angle_update(self, current_angle, current_velocity, time_step: float):
-        new_angle = current_angle + (current_velocity * time_step)
-        return new_angle % (2*math.pi)
+    def angle_update(self, current_velocity, time_step: float):
+        new_angle = self.running_params["angle"] + (current_velocity * time_step) % (2*math.pi)
+        self.running_params["angle"] = new_angle
+        return new_angle
     
     def sim_step(self, force):
 
-        current_angle = self.running_params["angle"]
-        current_velocity = self.running_params["angular_velocity"]
-        new_velocity = self.velocity_update(current_velocity, force, self.running_params["time_step"])
-        new_angle = self.angle_update(current_angle, new_velocity, self.running_params["time_step"])
+        new_velocity = self.velocity_update(force, self.running_params["time_step"])
+        new_angle = self.angle_update(new_velocity, self.running_params["time_step"])
 
-        self.running_params["angle"] = new_angle
-        self.running_params["angular_velocity"] = new_velocity
         velocity = new_velocity
         position= new_angle
 
         return velocity, position
     
 class PIDController(ControlBase):
-    def __init__(self, physical_params = physical_params, running_params = running_params, Kp=27.91, Ki=6.05, Kd=8.0, gamma=1.276, mu=0.0668, setpoint=2*math.pi/3):
-        super().__init__(physical_params, running_params)
-        self.Kp = Kp
-        self.Ki = Ki
-        self.Kd = Kd
-        self.gamma = gamma
-        self.mu = mu
+    def __init__(self, setpoint=2*math.pi/3):
+        super().__init__()
+        self.Kp = 0
+        self.Ki = 0
+        self.Kd = 0
+        self.gamma = 0
+        self.mu = 0
         self.setpoint = setpoint
         self.previous_error = [0]
         self.current_PID = 0
+    
+    def set_PID_params(self, P, I, D, gamma, mu):
+        self.Kp = P
+        self.Ki = I
+        self.Kd = D
+        self.gamma = gamma
+        self.mu = mu
 
     def compute_control(self, current_angle): #implement FOPID
         error = self.setpoint - current_angle

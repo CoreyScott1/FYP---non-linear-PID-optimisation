@@ -140,7 +140,7 @@ def animate_number_line(points_history, x_range=None, interval=100):
     plt.show()
 
 
-def create_animation(physical_params, xPos, yPos, set_points_x, set_points_y):
+def create_animation(physical_params, running_params, xPos, yPos, set_points_x, set_points_y):
     """Create and display animation of the arm."""
     # Create animation
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -189,11 +189,11 @@ def create_animation(physical_params, xPos, yPos, set_points_x, set_points_y):
             spring_line.set_data([spring_pos[0], xPos[frame]], [spring_pos[1], yPos[frame]])
         
         # Update time text
-        time_text.set_text(f'Time: {frame * physical_params["time_step"]:.2f}s')
+        time_text.set_text(f'Time: {frame * running_params["time_step"]:.2f}s')
         return [line, point, setpoint, time_text] + spring_lines
     
     anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(xPos), 
-                                   interval=physical_params["time_step"] * 1000, blit=True, repeat=True)
+                                   interval=running_params["time_step"] * 1000, blit=True, repeat=True)
     plt.show()
     
 
