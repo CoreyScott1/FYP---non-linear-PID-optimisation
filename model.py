@@ -154,15 +154,12 @@ class PIDController(ControlBase):
         dt = self.running_params["time_step"]
         T = len(pos) * dt
 
-        # --- 1. Tracking error (IAE) ---
         error = setpoint - pos
         iae = np.sum(np.abs(error)) * dt
 
-        # --- 2. Overshoot penalty ---
         overshoot = np.max(pos - setpoint)
         overshoot_penalty = max(0.0, overshoot)**2
 
-        # --- 3. Settling time penalty ---
         tol = 0.02 * abs(setpoint) if abs(setpoint) > 1e-6 else 0.02
         settled_idx = None
         for i in range(len(pos)):
@@ -176,23 +173,21 @@ class PIDController(ControlBase):
             settling_time = settled_idx * dt
             settling_penalty = settling_time
 
-        # --- 4. Oscillation / smoothness penalty ---
         vel_rms = np.sqrt(np.mean(vel**2))
         oscillation_penalty = vel_rms
 
-        # --- Stability guards ---
+
         if np.any(np.isnan(pos)) or np.any(np.isinf(pos)):
             return 1e9  # instant death to unstable solutions
 
         if np.max(np.abs(pos)) > 10 * abs(setpoint + 1e-6):
             return 1e8  # diverged
 
-        # --- Final weighted fitness ---
         fitness = (
-            1.0 * iae +
-            10.0 * overshoot_penalty +
-            2.0 * settling_penalty +
-            0.5 * oscillation_penalty 
+        1.0 * iae +
+        5.0 * overshoot_penalty +
+        3.0 * settling_penalty +
+        2.0 * oscillation_penalty
         )
 
         return fitness
