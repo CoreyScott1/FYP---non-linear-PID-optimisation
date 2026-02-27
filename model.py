@@ -2,6 +2,8 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+import random
+from scipy.special import gamma
 
 
 
@@ -9,11 +11,11 @@ class ControlBase():
     def __init__(self):
 
         self.physical_params = {
-        "l" : 5.0,  # length of the arm
-        "m" : 2.0,  # mass of the arm
+        "l" : 30.0,  # length of the arm
+        "m" : 20.0,  # mass of the arm
         "k" : [5.0], # spring constants
-        "kl" : [2.0], #spring lengths
-        "kp" : [(-7, 0)], # spring positions
+        "kl" : [9.0], #spring lengths
+        "kp" : [(-37, 10)], # spring positions
         "damping" : 0.9 # damping coefficient
         }
 
@@ -55,7 +57,7 @@ class ControlBase():
         return new_velocity
 
     def angle_update(self, current_velocity, time_step: float):
-        new_angle = self.running_params["angle"] + (current_velocity * time_step) % (2*math.pi)
+        new_angle = (self.running_params["angle"] + (current_velocity * time_step)) % (2*math.pi)
         self.running_params["angle"] = new_angle
         return new_angle
     
@@ -75,41 +77,54 @@ class PIDController(ControlBase):
         self.Kp = 0
         self.Ki = 0
         self.Kd = 0
-        self.gamma = 0
+        self.lam = 0
         self.mu = 0
         self.setpoint = setpoint
         self.previous_error = [0]
         self.current_PID = 0
     
-    def set_PID_params(self, P, I, D, gamma, mu):
+    def reset(self):
+        self.running_params["angle"] = 0.0
+        self.running_params["angular_velocity"] = 0.0
+        self.previous_error = [0]
+        self.current_PID = 0
+    
+    def set_PID_params(self, P, I, D, lam, mu, setpoint=None):
         self.Kp = P
         self.Ki = I
         self.Kd = D
-        self.gamma = gamma
+        self.lam = lam
         self.mu = mu
+        if setpoint is not None:
+            self.setpoint = setpoint
 
-    def compute_control(self, current_angle): #implement FOPID
+    def compute_control(self, current_angle):  # implement FOPID
+        Kp, Ki, Kd, lam, mu = map(self.__dict__.get, ("Kp", "Ki", "Kd", "lam", "mu"))
+        dt = self.running_params["time_step"]
+        
         error = self.setpoint - current_angle
         self.previous_error.append(error)
+        N = len(self.previous_error)
 
-        P = self.Kp * error
+        # --- Helper function: safe fractional coefficients ---
+        def fractional_coeffs(alpha, N):
+            coeffs = [1.0]
+            for k in range(1, N):
+                coeffs.append(coeffs[k-1] * (alpha - k + 1) / k)
+            return coeffs
 
-        I = self.Ki * sum(self.previous_error) * self.running_params["time_step"]
-        if I > 0:
-            I = I ** self.gamma
-        else:
-            I = -(-I) ** self.gamma
+        # Fractional Integral
+        int_coeffs = fractional_coeffs(lam, N)
+        frac_int = sum(c * e for c, e in zip(int_coeffs[::-1], self.previous_error)) * dt**lam
 
-        D = self.Kd * (error - self.previous_error[-2]) / self.running_params["time_step"]
-        if D > 0:
-            D = D ** self.mu
-        else:
-            D = -(-D) ** self.mu
+        # Fractional Derivative
+        der_coeffs = fractional_coeffs(mu, N)
+        frac_der = sum(c * e for c, e in zip(der_coeffs[::-1], self.previous_error)) / dt**mu
 
-        self.current_PID = P + I + D
-        
-
-        return self.current_PID
+        # Compute control force
+        u = Kp * error + Ki * frac_int + Kd * frac_der
+        self.current_PID = u
+        return u
     
 
     def sim_run(self,time_limit, control_enabled=True):
@@ -132,26 +147,72 @@ class PIDController(ControlBase):
 
         return velocity_history, position_history, set_points
     
-    def evaluate_performance(self, position_history):
-        error_sum = 0
-        for position in position_history:
-            error_sum += abs(self.setpoint - position)
-        return error_sum
     
-    def complete_test(self, time_limit, P, I, D, gamma, mu):
-        self.Kp = P
-        self.Ki = I
-        self.Kd = D
-        self.gamma = gamma
-        self.mu = mu
-        velocity_history, position_history, _ = self.sim_run(time_limit)
-        performance = self.evaluate_performance(position_history)
+    def evaluate_performance(self, position_history, velocity_history, setpoint):
+        pos = np.array(position_history)
+        vel = np.array(velocity_history)
+        dt = self.running_params["time_step"]
+        T = len(pos) * dt
+
+        # --- 1. Tracking error (IAE) ---
+        error = setpoint - pos
+        iae = np.sum(np.abs(error)) * dt
+
+        # --- 2. Overshoot penalty ---
+        overshoot = np.max(pos - setpoint)
+        overshoot_penalty = max(0.0, overshoot)**2
+
+        # --- 3. Settling time penalty ---
+        tol = 0.02 * abs(setpoint) if abs(setpoint) > 1e-6 else 0.02
+        settled_idx = None
+        for i in range(len(pos)):
+            if np.all(np.abs(error[i:]) < tol):
+                settled_idx = i
+                break
+
+        if settled_idx is None:
+            settling_penalty = T * 5.0  # never settled → big penalty
+        else:
+            settling_time = settled_idx * dt
+            settling_penalty = settling_time
+
+        # --- 4. Oscillation / smoothness penalty ---
+        vel_rms = np.sqrt(np.mean(vel**2))
+        oscillation_penalty = vel_rms
+
+        # --- Stability guards ---
+        if np.any(np.isnan(pos)) or np.any(np.isinf(pos)):
+            return 1e9  # instant death to unstable solutions
+
+        if np.max(np.abs(pos)) > 10 * abs(setpoint + 1e-6):
+            return 1e8  # diverged
+
+        # --- Final weighted fitness ---
+        fitness = (
+            1.0 * iae +
+            10.0 * overshoot_penalty +
+            2.0 * settling_penalty +
+            0.5 * oscillation_penalty 
+        )
+
+        return fitness
+    
+    def complete_test(self, time_limit, P, I, D, lam, mu, setpoint):
+        self.reset()
+        self.set_PID_params(P=P, I=I, D=D, lam=lam, mu=mu, setpoint=setpoint)
+        
+
+        velocity_history, position_history, set_points = self.sim_run(time_limit)
+        performance = self.evaluate_performance(position_history, velocity_history, set_points[0])
         return performance
 
 
 if __name__ == "__main__":
     # Example usage
-    pid_controller = PIDController(Kp=10.0, Ki=10.0, Kd=8.0, gamma=0.4, mu=0.7, setpoint=2*math.pi/3)
+    pid_controller = PIDController(setpoint=2*math.pi/3)
+    pid_controller.set_PID_params(P=2.0, I=0.5, D=1.0, lam=1, mu=1)
     velocity_history, position_history, set_points = pid_controller.sim_run(10.0)
     print("Final Position:", position_history[-1])
-    
+
+    # for angle in np.linspace(0, 2*math.pi, 100):
+    #     print(f"Angle: {angle:.2f}, Control Signal: {pid_controller.compute_control(current_angle=angle):.2f}")
