@@ -41,6 +41,7 @@ class agent_swarm:
         self.social_weight = 1.826533
         self.limit_min = range_min
         self.limit_max = range_max
+        self.time_step = 0.233868
 
 
 
@@ -82,31 +83,42 @@ class agent_swarm:
             agent.velocity = intertia_component + cognitive_component + social_component
 
 
-    def update_positions(self, time_step= 0.233868):
+
+
+    def update_positions(self, iteration=None):
+        if iteration is not None:
+            self.time_step = 1/(1 + iteration * 0.1)
+
         self.calculate_velocity()
         for ag in self.agents:
 
             #Main position update equation
-            values = list(np.array(ag.values) + np.array(ag.velocity) * time_step)
-            for i in range(len(values)):
+            for dimention in range(len(ag.values)):
+                ag.values[dimention] += ag.velocity[dimention] * self.time_step
 
-                if values[i] > self.limit_max[i] or values[i] < self.limit_min[i]:
-                    values[i] = random.uniform(self.limit_min[i], self.limit_max[i]) # random clamping
+            for i in range(len(ag.values)):
+
+                if ag.values[i] > self.limit_max[i] or ag.values[i] < self.limit_min[i]:
+                    ag.values[i] = random.uniform(self.limit_min[i], self.limit_max[i]) # random clamping
             
             # if random.random() < 0.1: # random mutation
-            #     values[random.randint(0, len(values)-1)] = random.uniform(self.limit_min[random.randint(0, len(self.limit_min)-1)], self.limit_max[random.randint(0, len(self.limit_max)-1)])
-            
-            ag.values = values
+            #     ag.values[random.randint(0, len(ag.values)-1)] = random.uniform(self.limit_min[random.randint(0, len(self.limit_min)-1)], self.limit_max[random.randint(0, len(self.limit_max)-1)])
+
+    def get_agent_histories(self):
+        histories = []
+        for ag in self.agents:
+            histories.append(ag.History)
+        return histories
     
     def get_agent_data(self):
         data = []
         for ag in self.agents:
             data.append({
-                'values': ag.values,
+                'values': ag.values.tolist() if isinstance(ag.values, np.ndarray) else ag.values,
                 'fitness': ag.fitness,
-                'best_position': ag.bestPosition,
-                'velocity': ag.velocity,
-                'history': ag.History
+                'best_position': ag.bestPosition.tolist() if isinstance(ag.bestPosition, np.ndarray) else ag.bestPosition,
+                'velocity': ag.velocity.tolist() if isinstance(ag.velocity, np.ndarray) else ag.velocity,
+                'history': ag.History.tolist() if isinstance(ag.History, np.ndarray) else ag.History
             })
         return data
     

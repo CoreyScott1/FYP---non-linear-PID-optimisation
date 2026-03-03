@@ -42,7 +42,7 @@ def swarm_optimisation():
 
     for i in range(iterations):
         print(f"Iteration {i+1}/{iterations}")
-        swarm.update_positions()
+        swarm.update_positions(iteration=i)
         print(f"Best Agent Fitness: {swarm.get_best_agent().fitness}")
         print(f"Best Agent Parameters: {swarm.get_best_agent().values}")
         if show_animation:
