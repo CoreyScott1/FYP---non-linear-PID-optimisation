@@ -3,6 +3,7 @@ from swarm import agent_swarm
 from paramDisplay import *
 import numpy as np
 import math
+import save
 
 
 def sim_test():
@@ -32,7 +33,7 @@ def sim_test():
 
 
 def swarm_optimisation():
-    swarm = agent_swarm(no_of_agents=150)
+    swarm = agent_swarm(no_of_agents=15)
     iterations = 30
 
     pid_controller = PIDController(setpoint=2*math.pi/3)
@@ -55,9 +56,12 @@ def swarm_optimisation():
             set_points_y = [pid_controller.physical_params["l"] * math.sin(angle) for angle in set_points]
 
             create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
-   
+    
+
+    save.save_swarm_state(swarm, iterations, "final_swarm_state.yaml")
     print("Optimization Complete!")
     best_agent = swarm.get_best_agent()
+
     print(f"Best Agent Fitness: {best_agent.fitness}")
     print(f"Best Agent Parameters: {best_agent.values}")
     

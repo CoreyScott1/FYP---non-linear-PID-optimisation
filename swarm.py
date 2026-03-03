@@ -41,7 +41,7 @@ class agent_swarm:
         self.social_weight = 1.826533
         self.limit_min = range_min
         self.limit_max = range_max
-        self.update_threads = 0
+
 
 
     def update_fitness(self):
@@ -97,13 +97,18 @@ class agent_swarm:
             #     values[random.randint(0, len(values)-1)] = random.uniform(self.limit_min[random.randint(0, len(self.limit_min)-1)], self.limit_max[random.randint(0, len(self.limit_max)-1)])
             
             ag.values = values
-            
-    def get_agent_histories(self):
-        histories = []
-        for ag in self.agents:
-            histories.append(ag.History)
-        return histories
     
+    def get_agent_data(self):
+        data = []
+        for ag in self.agents:
+            data.append({
+                'values': ag.values,
+                'fitness': ag.fitness,
+                'best_position': ag.bestPosition,
+                'velocity': ag.velocity,
+                'history': ag.History
+            })
+        return data
     
 if __name__ == "__main__":
     iterations = 10

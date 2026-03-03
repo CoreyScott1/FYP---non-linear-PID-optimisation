@@ -48,6 +48,7 @@ def plot_all_params(pointArray, x_ranges=None):
 
 
 def plot_number_line(points, x_range=None, ax=None):
+    """Plots a mumber line of an array of points with range"""
     points = np.array(points)
     
     # Determine x-axis range
@@ -74,14 +75,8 @@ def plot_number_line(points, x_range=None, ax=None):
     plt.grid(True)
 
 def animate_number_line(points_history, x_range=None, interval=100):
-    """Animate points moving along a number line over time.
-    
-    Args:
-        points_history: List of frames, where each frame contains a list of parameters, 
-                       and each parameter contains agent values
-        x_range: List of tuples (x_min, x_max) for each parameter, or None to auto-calculate
-        interval: Delay between frames in milliseconds
-    """
+    """Animates a number line of an array of points with range"""
+
     if not points_history or not points_history[0]:
         return
     
@@ -141,7 +136,10 @@ def animate_number_line(points_history, x_range=None, interval=100):
 
 
 def create_animation(physical_params, running_params, xPos, yPos, set_points_x, set_points_y):
-    """Create and display animation of the arm."""
+    """
+    Create animation of arm,
+    reqires setpoint of arm
+    """
     # Create animation
     fig, ax = plt.subplots(figsize=(8, 8))
     
