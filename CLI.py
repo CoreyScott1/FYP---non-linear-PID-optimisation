@@ -23,49 +23,121 @@ class CLI():
     def __init__(self):
         pass
 
+    def loose_match_prompt(self, options, response=None):
+    
+        if response is None:
+            response = list(input().lower().replace(" ", ""))
+        print(f"Response: {response}")
+        for option in options:
+            indexList = []
+            for letter in response:
+                if letter in option:
+                    indexList.append(option.index(letter))
+            if indexList and indexList[0] == 0: 
+                if indexList == sorted(indexList):
+            
+                    return option
+        
+        print("invalid input, please try again")
+        return self.loose_match_prompt(options)
+
+    def confirmation_prompt(self, message, default_yes=True):
+        print(message)
+        response = input().lower().strip()
+        if response == "" and default_yes:
+            return True
+        else:
+            loose_match_options = ["yes", "no"]
+            return self.loose_match_prompt(loose_match_options, response) == "yes"
+    
+    def type_prompt(self, message, expected_type):
+        print(message)
+        while True:
+            response = input().strip()
+            try:
+                return expected_type(response)
+            except ValueError:
+                print(f"Invalid input. Please enter a value of type {expected_type.__name__}.")
+                return self.type_prompt(message, expected_type)
+    
+    def range_prompt(self, message, min_value=None, max_value=None):
+        while True:
+            try:
+                value = float(input(message))
+                if (min_value is not None and value < min_value) or (max_value is not None and value > max_value):
+                    print(f"Please enter a value between {min_value} and {max_value}.")
+                else:
+                    return value
+            except ValueError:
+                print("Invalid input. Please enter a numeric value.")
+                return self.range_prompt(message, min_value, max_value)
+    
+    def collection_prompt(self, messages, response_types, constraints=None): 
+        responses = []
+
+        for i, message in enumerate(messages):
+
+            if response_types[i] == "type":
+                responses.append(self.type_prompt(message, constraints[i]))
+            elif response_types[i] == "range":
+                responses.append(self.range_prompt(message, constraints[i][0], constraints[i][1]))
+            else:
+                responses.append(self.loose_match_prompt(constraints[i], self.type_prompt(message, str)))
+        return responses
+
+
     def get_user_choice(self): #used for default cmd when not in menu
-        """
-        save
-        load
-        run optimisation
-        run simulation
-        exit
-        """
-        pass
+
+        return self.loose_match_prompt(["save", "load", "run optimisation", "run simulation", "exit"])
     
     def get_optimisation_params(self):
-        """
-        number of agents
-        number of iterations
-        show animation
 
-        """
-        pass
+        collection_meassages = [
+            "Enter the number of agents: ",
+            "Enter the number of iterations: ",
+            "Show animation during optimization? (yes/no): "
+        ]
+        collection_constraints = [
+            int,
+            int,
+            ["yes", "no"]
+        ]
+        responses = cli.collection_prompt(collection_meassages, ["type", "type", "loose_match"], collection_constraints)
+        return responses
+        
 
-    def get_simulation_params(self):
-        """
-        setpoint
-        time duration
-        selected agent
+    def get_simulation_params(self, selected_agent):
 
-        """
-        pass
+        collection_meassages = [
+            "Enter the setpoint: ",
+            "Enter the time duration: ",
+            "Select an agent to simulate: "
+        ]
+        collection_constraints = [
+            float,
+            float,
+            ["agent1", "agent2", "agent3"] #placeholder, should be generated based on current swarm
+        ]
+        responses = cli.collection_prompt(collection_meassages, ["type", "type", "loose_match"], collection_constraints)
+        return responses
     
-    def get_load_params(self):
-        """
-        show list of saved swarms
-        select one to load
-        - go back to main menu
-        """
-        pass
+    def get_load_params(self, available_swarms):
 
-    def get_save_params(self):
-        """
-        show current swarm parameters
-        select which parameters to save (or all)
-        set name
-        """
-        pass
+        print("Available saved swarms:")
+        for i, swarm in enumerate(available_swarms):
+            print(f"{i + 1}. {swarm}")
+        return self.type_prompt("Enter the number of the swarm you want to load (or 0 to go back): ", int)
+    
+
+    def get_save_params(self, swarm_params):
+
+        for x in swarm_params:
+            print(f"{x}: {swarm_params[x]}")
+        
+        all_params = self.confirmation_prompt("Do you want to save all parameters? (yes/no): ")
+        name = self.type_prompt("Enter a name for the saved swarm: ", str)
+        return name, all_params
+
 
     def get_loaded_swarm_params(self):
         """
@@ -74,3 +146,8 @@ class CLI():
         also can be used to navigate swarm stats, might break into seperate function
         """
         pass
+
+if __name__ == "__main__":
+    cli = CLI()
+    while True:
+        cli.get_optimisation_params()
