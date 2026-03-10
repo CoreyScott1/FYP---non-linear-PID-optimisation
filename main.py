@@ -1,6 +1,7 @@
 from model import PIDController 
 from swarm import agent_swarm
 from paramDisplay import *
+from cli import CLI
 import numpy as np
 import math
 import save
@@ -111,7 +112,36 @@ def swarm_optimisation():
     
 
 if __name__ == "__main__":
-    # sample_use()
-    #sim_test()
-    swarm_optimisation()
+    #ignore current functions and create new ones for cli to use, itll be cleaner that way
+    while True:
+    
+        cli = CLI()
 
+        
+
+        
+        # sample_use()
+        #sim_test()
+        swarm_optimisation()
+
+        #use match for navigation
+        usrInput = cli.get_user_choice()
+        match usrInput:
+            case "run optimisation":
+                params = cli.get_optimisation_params()
+                swarm_optimisation(**params)
+
+            case "run simulation":
+                params = cli.get_simulation_params()
+
+            case "save":
+                save_params = cli.get_save_params()
+                # Implement saving logic here
+
+            case "load":
+                load_params = cli.get_load_params()
+                # Implement loading logic here
+
+            case "exit":
+                print("Exiting program.")
+                break

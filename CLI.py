@@ -27,19 +27,50 @@ class CLI():
         """
         save
         load
-        run
-        
+        run optimisation
+        run simulation
+        exit
         """
         pass
     
     def get_optimisation_params(self):
+        """
+        number of agents
+        number of iterations
+        show animation
+
+        """
+        pass
+
+    def get_simulation_params(self):
+        """
+        setpoint
+        time duration
+        selected agent
+
+        """
         pass
     
     def get_load_params(self):
+        """
+        show list of saved swarms
+        select one to load
+        - go back to main menu
+        """
         pass
 
     def get_save_params(self):
+        """
+        show current swarm parameters
+        select which parameters to save (or all)
+        set name
+        """
         pass
 
     def get_loaded_swarm_params(self):
+        """
+        select speficic iterations and elements of a swarm
+        for inbetween get_load and get_simulation, called by main
+        also can be used to navigate swarm stats, might break into seperate function
+        """
         pass
