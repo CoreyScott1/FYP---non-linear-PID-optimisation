@@ -24,6 +24,8 @@ class CLI():
         pass
 
     def loose_match_prompt(self, options, response=None):
+
+        candidate_options = []
     
         if response is None:
             response = list(input().lower().replace(" ", ""))
@@ -33,10 +35,12 @@ class CLI():
             for letter in response:
                 if letter in option:
                     indexList.append(option.index(letter))
-            if indexList and indexList[0] == 0: 
+            if list(option)[0] == response[0]: 
                 if indexList == sorted(indexList):
             
-                    return option
+                    candidate_options.append((option, len(indexList)))
+        if candidate_options:
+            return max(candidate_options, key=lambda x: x[1])[0] if candidate_options else None
         
         print("invalid input, please try again")
         return self.loose_match_prompt(options)
@@ -149,5 +153,7 @@ class CLI():
 
 if __name__ == "__main__":
     cli = CLI()
+    loose_match_options = ["save", "load", "run optimisation", "run simulation", "exit"]
     while True:
-        cli.get_optimisation_params()
+        print("Please select an option:")
+        print(cli.loose_match_prompt(loose_match_options))
