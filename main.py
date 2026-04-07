@@ -99,6 +99,9 @@ def swarm_optimisation():
     plot_all_params(param_array[:-1], x_ranges=ranges)
     agent_history = swarm.get_agent_histories()
     
+    # Plot sector convergence over iterations
+    plot_sector_convergence(swarm, param_names=['P', 'I', 'D', 'Gamma', 'Mu'])
+    
     # Restructure from agents -> frames -> (parameters, fitness) to frames -> parameters -> agent values
     num_frames = len(agent_history[0]) if agent_history else 0
     num_params = len(agent_history[0][0][0]) if agent_history and agent_history[0] else 0
