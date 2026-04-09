@@ -71,6 +71,9 @@ class CLI():
         return responses
 
 
+
+
+
     def get_user_choice(self): #used for default cmd when not in menu
 
         return self.loose_match_prompt(["save", "load", "run optimisation", "run simulation", "exit"])
@@ -91,7 +94,7 @@ class CLI():
         return responses
         
 
-    def get_simulation_params(self, selected_agent):
+    def get_simulation_params(self, agent_range):
 
         collection_meassages = [
             "Enter the setpoint: ",
@@ -101,7 +104,7 @@ class CLI():
         collection_constraints = [
             float,
             float,
-            ["agent1", "agent2", "agent3"] #placeholder, should be generated based on current swarm
+            agent_range 
         ]
         responses = cli.collection_prompt(collection_meassages, ["type", "type", "loose_match"], collection_constraints)
         return responses
@@ -111,15 +114,15 @@ class CLI():
         print("Available saved swarms:")
         for i, swarm in enumerate(available_swarms):
             print(f"{i + 1}. {swarm}")
-        return self.type_prompt("Enter the number of the swarm you want to load (or 0 to go back): ", int)
+        return self.loose_match_prompt(available_swarms, self.type_prompt("Enter the name of the swarm to load: ", str))
     
 
     def get_save_params(self, swarm_params):
 
-        for x in swarm_params:
-            print(f"{x}: {swarm_params[x]}")
+        for key, value in swarm_params.items():
+            print(f"{key}: {value}")
         
-        all_params = self.confirmation_prompt("Do you want to save all parameters? (yes/no): ")
+        all_params = self.confirmation_prompt("Do you want to save all agent history or just the final state? (yes for all, no for final state only): ")
         name = self.type_prompt("Enter a name for the saved swarm: ", str)
         return name, all_params
 

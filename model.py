@@ -1,7 +1,6 @@
 import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import numpy as np
 import random
 from scipy.special import gamma
 
@@ -149,39 +148,38 @@ class PIDController(ControlBase):
     
     
     def evaluate_performance(self, position_history, velocity_history, setpoint):
-        pos = np.array(position_history)
-        vel = np.array(velocity_history)
+        pos = position_history
+        vel = velocity_history
         dt = self.running_params["time_step"]
         T = len(pos) * dt
 
-        error = setpoint - pos
-        iae = np.sum(np.abs(error)) * dt
+        error = [setpoint - p for p in pos]
+        iae = sum(abs(e) for e in error) * dt
 
-        overshoot = np.max(pos - setpoint)
+        overshoot = max(p - setpoint for p in pos)
         overshoot_penalty = max(0.0, overshoot)**2
 
         tol = 0.02 * abs(setpoint) if abs(setpoint) > 1e-6 else 0.02
         settled_idx = None
         for i in range(len(pos)):
-            if np.all(np.abs(error[i:]) < tol):
+            if all(abs(error[j]) < tol for j in range(i, len(error))):
                 settled_idx = i
                 break
 
         if settled_idx is None:
-            settling_penalty = T * 5.0  # never settled → big penalty
+            settling_penalty = T * 5.0
         else:
             settling_time = settled_idx * dt
             settling_penalty = settling_time
 
-        vel_rms = np.sqrt(np.mean(vel**2))
+        vel_rms = (sum(v**2 for v in vel) / len(vel))**0.5
         oscillation_penalty = vel_rms
 
+        if any(p != p or p == float('inf') or p == float('-inf') for p in pos):
+            return 1e9
 
-        if np.any(np.isnan(pos)) or np.any(np.isinf(pos)):
-            return 1e9  # instant death to unstable solutions
-
-        if np.max(np.abs(pos)) > 10 * abs(setpoint + 1e-6):
-            return 1e8  # diverged
+        if max(abs(p) for p in pos) > 10 * abs(setpoint + 1e-6):
+            return 1e8
 
         fitness = (
         1.0 * iae +
@@ -209,5 +207,3 @@ if __name__ == "__main__":
     velocity_history, position_history, set_points = pid_controller.sim_run(10.0)
     print("Final Position:", position_history[-1])
 
-    # for angle in np.linspace(0, 2*math.pi, 100):
-    #     print(f"Angle: {angle:.2f}, Control Signal: {pid_controller.compute_control(current_angle=angle):.2f}")

@@ -1,7 +1,6 @@
 import math
 import random
 from model import PIDController
-import numpy as np
 import threading
 
 pid_controller = PIDController(setpoint=2*math.pi/3)
@@ -77,10 +76,11 @@ class agent_swarm:
 
             #Main velocity equation
 
-            intertia_component = self.intertia_weight * np.array(agent.velocity)  
-            cognitive_component = self.cognitive_weight * random.random() * (np.array(agent.bestPosition[0])- np.array(agent.values))
-            social_component = self.social_weight * random.random() * (np.array(global_best_agent.values) - np.array(agent.values))
-            agent.velocity = intertia_component + cognitive_component + social_component
+            for i in range(len(agent.velocity)):
+                intertia_component = self.intertia_weight * agent.velocity[i]
+                cognitive_component = self.cognitive_weight * random.random() * (agent.bestPosition[0][i] - agent.values[i])
+                social_component = self.social_weight * random.random() * (global_best_agent.values[i] - agent.values[i])
+                agent.velocity[i] = intertia_component + cognitive_component + social_component
 
 
 
@@ -114,11 +114,11 @@ class agent_swarm:
         data = []
         for ag in self.agents:
             data.append({
-                'values': ag.values.tolist() if isinstance(ag.values, np.ndarray) else ag.values,
+                'values': ag.values,
                 'fitness': ag.fitness,
-                'best_position': ag.bestPosition.tolist() if isinstance(ag.bestPosition, np.ndarray) else ag.bestPosition,
-                'velocity': ag.velocity.tolist() if isinstance(ag.velocity, np.ndarray) else ag.velocity,
-                'history': ag.History.tolist() if isinstance(ag.History, np.ndarray) else ag.History
+                'best_position': ag.bestPosition,
+                'velocity': ag.velocity,
+                'history': ag.History
             })
         return data
     
