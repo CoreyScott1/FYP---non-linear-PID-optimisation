@@ -32,7 +32,7 @@ class agent:
         self.History.append((self.values, self.fitness))
 
 class agent_swarm:
-    def __init__(self, no_of_agents, dimension=5, range_min=[0.0, 0.0, 0.0, 0.5, 0.5], range_max=[20.0, 5.0, 5.0, 1.0, 1.0]):
+    def __init__(self, no_of_agents, dimension=5, range_min=[0.0, 0.0, 0.0, 0.7, 0.3], range_max=[15.0, 5.0, 3.0, 1.0, 0.8], setpoint=math.pi):
         self.agents = [agent(dimension, range_min, range_max) for _ in range(no_of_agents)]
         self.best_agent = self.agents[random.randint(0, no_of_agents -1)]
         self.intertia_weight =  0.768244
@@ -40,15 +40,16 @@ class agent_swarm:
         self.social_weight = 1.826533
         self.limit_min = range_min
         self.limit_max = range_max
-        self.time_step = 0.233868
+        self.time_step = 0.2
+        self.setpoint = setpoint
 
 
 
     def update_fitness(self):
-        setpoint = math.pi
+
         
         for i, agent in enumerate(self.agents):
-            agent.fitness = pid_controller.complete_test(10.0, agent.values[0], agent.values[1], agent.values[2], agent.values[3], agent.values[4], setpoint)
+            agent.fitness = pid_controller.complete_test(10.0, agent.values[0], agent.values[1], agent.values[2], agent.values[3], agent.values[4], self.setpoint)
             print(f"Agent {i}/{len(self.agents)}", end="\r")
 
         for agent in self.agents:
@@ -101,8 +102,8 @@ class agent_swarm:
                 if ag.values[i] > self.limit_max[i] or ag.values[i] < self.limit_min[i]:
                     ag.values[i] = random.uniform(self.limit_min[i], self.limit_max[i]) # random clamping
             
-            # if random.random() < 0.1: # random mutation
-            #     ag.values[random.randint(0, len(ag.values)-1)] = random.uniform(self.limit_min[random.randint(0, len(self.limit_min)-1)], self.limit_max[random.randint(0, len(self.limit_max)-1)])
+            if random.random() < 0.1: # random mutation
+                ag.values[random.randint(0, len(ag.values)-1)] = random.uniform(self.limit_min[random.randint(0, len(self.limit_min)-1)], self.limit_max[random.randint(0, len(self.limit_max)-1)])
 
     def get_agent_histories(self):
         histories = []

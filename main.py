@@ -7,21 +7,11 @@ import math
 import save
 
 
-def sim_test():
-    force_values = []
-    angles = []
-    time_limit = 10.0  # seconds
-    
-    # Create PID controller and run simulation
-    pid_controller = PIDController(setpoint=2*np.pi/3)
-    pid_controller.set_PID_params(P=2.0, I=0.5, D=1.0, gamma=1, mu=1)
-    velocity_history, position_history, set_points = pid_controller.sim_run(time_limit,control_enabled=True)
+def animation_init(simulation_params):
 
-    for velocity, position in zip(velocity_history, position_history):
-        print(f"Velocity: {velocity:.2f}, Position: {position:.2f}")
-    
-    # Plot velocity and position history
-    plot_velocity_position_history(velocity_history, position_history, time_limit)
+    pid_controller = PIDController(simulation_params['setpoint'])
+    pid_controller.set_PID_params(simulation_params['P'], simulation_params['I'], simulation_params['D'], simulation_params['gamma'], simulation_params['mu'], simulation_params['setpoint'])
+    velocity_history, position_history, set_points = pid_controller.sim_run(time_limit=10.0, control_enabled=True)
 
     xPos = [pid_controller.physical_params["l"] * math.cos(angle) for angle in position_history]
     yPos = [pid_controller.physical_params["l"] * math.sin(angle) for angle in position_history]
@@ -29,119 +19,52 @@ def sim_test():
     set_points_y = [pid_controller.physical_params["l"] * math.sin(angle) for angle in set_points]
 
     # Create and display animation
-    create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
+    #create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
+
+    plot_points_vs_time(velocity_history)
 
 
+def optimize(params):
+    setpoint = 4
+    swarm = agent_swarm(no_of_agents=params[0])
+    iterations = params[1]
+    if params[2] == "yes":
+        show_animation = True
+    else:
+        show_animation = False
 
-def swarm_optimisation():
-    swarm = agent_swarm(no_of_agents=15)
-    iterations = 30
-
-    pid_controller = PIDController(setpoint=2*math.pi/3)
-    show_animation = False
-
-
-    for i in range(iterations):
-        print(f"Iteration {i+1}/{iterations}")
-        swarm.update_positions(iteration=i)
-        print(f"Best Agent Fitness: {swarm.get_best_agent().fitness}")
-        print(f"Best Agent Parameters: {swarm.get_best_agent().values}")
-        if show_animation:
-            pid_controller.set_PID_params(*swarm.get_best_agent().values)
-            velocity_history, position_history, set_points = pid_controller.sim_run(time_limit=10.0, control_enabled=True)
-
-
-            xPos = [pid_controller.physical_params["l"] * math.cos(angle) for angle in position_history]
-            yPos = [pid_controller.physical_params["l"] * math.sin(angle) for angle in position_history]
-            set_points_x = [pid_controller.physical_params["l"] * math.cos(angle) for angle in set_points]
-            set_points_y = [pid_controller.physical_params["l"] * math.sin(angle) for angle in set_points]
-
-            create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
-    
-
-
-    print("Optimization Complete!")
-    best_agent = swarm.get_best_agent()
-
-    print(f"Best Agent Fitness: {best_agent.fitness}")
-    print(f"Best Agent Parameters: {best_agent.values}")
-    
-
-    best_historical_agent = max(swarm.agents, key=lambda agent: max(fitness for _, fitness in agent.History))
-
-                                                
-    pid_controller.set_PID_params(*best_historical_agent.values)
-    velocity_history, position_history, set_points = pid_controller.sim_run(time_limit=10.0, control_enabled=True)
-
-
-    xPos = [pid_controller.physical_params["l"] * math.cos(angle) for angle in position_history]
-    yPos = [pid_controller.physical_params["l"] * math.sin(angle) for angle in position_history]
-    set_points_x = [pid_controller.physical_params["l"] * math.cos(angle) for angle in set_points]
-    set_points_y = [pid_controller.physical_params["l"] * math.sin(angle) for angle in set_points]
-
-    create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
-
-
-    agent_list = swarm.get_swarm_values()
-
-
-    
-    # Transpose agent_list to get parameters as rows instead of columns
-    param_array = list(map(list, zip(*agent_list)))
-
-    print(param_array)
-
-    ranges = [(0, 50), (0, 50), (0, 50), (0, 1), (0, 1)]
-
-    for x in enumerate(param_array):
-        print(f"Parameter Set {x[0]+1}: {x[1]}")
-
-    plot_all_params(param_array[:-1], x_ranges=ranges)
-    agent_history = swarm.get_agent_histories()
-    
-    # Plot sector convergence over iterations
-    plot_sector_convergence(swarm, param_names=['P', 'I', 'D', 'Gamma', 'Mu'])
-    
-    # Restructure from agents -> frames -> (parameters, fitness) to frames -> parameters -> agent values
-    num_frames = len(agent_history[0]) if agent_history else 0
-    num_params = len(agent_history[0][0][0]) if agent_history and agent_history[0] else 0
-    formatted_histories = [
-        [[agent[frame_idx][0][param_idx] for agent in agent_history] for param_idx in range(num_params)]
-        for frame_idx in range(num_frames)
-    ]
-
-
-    print("Optimization Complete!")
-    best_agent = swarm.get_best_agent()
-
-    print(f"Best Agent Fitness: {best_agent.fitness}")
-    print(f"Best Agent Parameters: {best_agent.values}")
-
-
-def optimize(**params):
-    swarm = agent_swarm(no_of_agents=params.get("number_of_agents", 15))
-    iterations = params.get("iterations", 30)
-    show_animation = params.get("show_animation", False)
-
-    pid_controller = PIDController(setpoint=2*math.pi/3)
+    pid_controller = PIDController(setpoint)
 
     for i in range(iterations):
         print(f"Iteration {i+1}/{iterations}")
         swarm.update_positions(iteration=i)
         print(f"Best Agent Fitness: {swarm.get_best_agent().fitness}")
         print(f"Best Agent Parameters: {swarm.get_best_agent().values}")
-        if show_animation:
-            pid_controller.set_PID_params(*swarm.get_best_agent().values)
-            velocity_history, position_history, set_points = pid_controller.sim_run(time_limit=10.0, control_enabled=True)
+    if show_animation:
 
+        simulation_params = {
+            'P': swarm.get_best_agent().values[0],
+            'I': swarm.get_best_agent().values[1],
+            'D': swarm.get_best_agent().values[2],
+            'gamma': swarm.get_best_agent().values[3],
+            'mu': swarm.get_best_agent().values[4],
+            'setpoint': setpoint
+        }
+        animation_init(simulation_params)
 
-            xPos = [pid_controller.physical_params["l"] * math.cos(angle) for angle in position_history]
-            yPos = [pid_controller.physical_params["l"] * math.sin(angle) for angle in position_history]
-            set_points_x = [pid_controller.physical_params["l"] * math.cos(angle) for angle in set_points]
-            set_points_y = [pid_controller.physical_params["l"] * math.sin(angle) for angle in set_points]
+        agent_history = swarm.get_agent_histories()
+    
+        # Restructure from agents -> frames -> (parameters, fitness) to frames -> parameters -> agent values
+        num_frames = len(agent_history[0]) if agent_history else 0
+        num_params = len(agent_history[0][0][0]) if agent_history and agent_history[0] else 0
+        formatted_histories = [
+            [[agent[frame_idx][0][param_idx] for agent in agent_history] for param_idx in range(num_params)]
+            for frame_idx in range(num_frames)
+        ]
+        ranges = [(0, 50), (0, 50), (0, 50), (0, 1), (0, 1)]
 
-            create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
-        
+        animate_number_line(formatted_histories, x_range=ranges, interval=500)
+    
     print("Optimization Complete!")
     best_agent = swarm.get_best_agent()
 
@@ -151,19 +74,16 @@ def optimize(**params):
     print("Returning to main menu...")
     return(swarm, i)
 
-    
 
-if __name__ == "__main__":
+def CLI_loop():
     #ignore current functions and create new ones for cli to use, itll be cleaner that way
-    while True:
+    cli = CLI()
     
-        cli = CLI()
+    run = True
+    loadedSwarm = []
+    
+    while run == True:
 
-        # sample_use()
-        #sim_test()
-        swarm_optimisation()
-
-        loadedSwarm = []
         skip = False
         usrInput = ""
 
@@ -174,7 +94,7 @@ if __name__ == "__main__":
         match usrInput:
             case "run optimisation":
                 params = cli.get_optimisation_params()
-                loadedSwarm = optimize(**params)
+                loadedSwarm = optimize(params)
 
             case "run simulation":
                 availableAgents = range(len(loadedSwarm[0].agents)) if loadedSwarm else 0
@@ -208,18 +128,86 @@ if __name__ == "__main__":
                 load_params = cli.get_load_params(save.get_all_loadable_swarms())
                 # Implement loading logic here
                 loadedSwarmInfo = save.load_swarm_state(load_params)
-
-                loadedSwarm = [agent_swarm(no_of_agents=loadedSwarmInfo['number_of_agents']),loadedSwarmInfo['iteration']]
+                if loadedSwarmInfo['iteration'] is None:
+                    iteration = 0
+                else:
+                    iteration = loadedSwarmInfo['iteration']
+                loadedSwarm = [agent_swarm(no_of_agents=loadedSwarmInfo['number_of_agents']), iteration]
                 loadedSwarm[0].limit_min = loadedSwarmInfo['range_min']
                 loadedSwarm[0].limit_max = loadedSwarmInfo['range_max']
                 
-                for agent in loadedSwarm[0].agents:
-                    agent.values = loadedSwarmInfo['agents'][agent.agent_id]['values']
-                    agent.fitness = loadedSwarmInfo['agents'][agent.agent_id]['fitness']
-                    agent.bestPosition = loadedSwarmInfo['agents'][agent.agent_id]['best_position']
-                    agent.velocity = loadedSwarmInfo['agents'][agent.agent_id]['velocity']
-                    agent.History = loadedSwarmInfo['agents'][agent.agent_id]['history']
+                for i, agent in enumerate(loadedSwarm[0].agents):
+                    agent.values = loadedSwarmInfo['agents'][i]['values']
+                    agent.fitness = loadedSwarmInfo['agents'][i]['fitness']
+                    agent.bestPosition = loadedSwarmInfo['agents'][i]['best_position']
+                    agent.velocity = loadedSwarmInfo['agents'][i]['velocity']
+                    agent.History = loadedSwarmInfo['agents'][i]['history']
+                skip = True
+                usrInput = "animation nav" #skip straight to animation nav after loading a swarm
+            
+            case "animation nav":
+                sim_loop = True
+                while sim_loop:
+
+                    loadedSwarmInfo = {
+                        'iteration': loadedSwarm[1],
+                        'range_min': loadedSwarm[0].limit_min,
+                        'range_max': loadedSwarm[0].limit_max,
+                        'dimension': len(loadedSwarm[0].agents[0].values),
+                        'agentData': loadedSwarm[0].get_agent_data()
+                    }
+
+                    response = cli.animation_nav(loadedSwarmInfo)
+                    match response[0]:
+                        case "run animation":
+                            animation_init(response[1])
+                        case "back":
+                            sim_loop = False
 
             case "exit":
                 print("Exiting program.")
+                run = False
                 break
+
+
+if __name__ == "__main__":
+    bestagents = []
+    
+    for x in save.get_all_loadable_swarms():
+    
+        loadedSwarmInfo = save.load_swarm_state(x)
+        if loadedSwarmInfo['iteration'] is None:
+            iteration = 0
+        else:
+            iteration = loadedSwarmInfo['iteration']
+        loadedSwarm = [agent_swarm(no_of_agents=loadedSwarmInfo['number_of_agents']), iteration]
+        loadedSwarm[0].limit_min = loadedSwarmInfo['range_min']
+        loadedSwarm[0].limit_max = loadedSwarmInfo['range_max']
+        
+        for i, agent in enumerate(loadedSwarm[0].agents):
+            agent.values = loadedSwarmInfo['agents'][i]['values']
+            agent.fitness = loadedSwarmInfo['agents'][i]['fitness']
+            agent.bestPosition = loadedSwarmInfo['agents'][i]['best_position']
+            agent.velocity = loadedSwarmInfo['agents'][i]['velocity']
+            agent.History = loadedSwarmInfo['agents'][i]['history']
+        
+        setpoint = 4
+        bestagents.append(loadedSwarm[0].get_best_agent())
+    print("Best Agents from all loaded swarms:")
+    for agent in bestagents:
+
+        simulation_params = {
+                'P': agent.values[0],
+                'I': agent.values[1],
+                'D': agent.values[2],
+                'gamma': agent.values[3],
+                'mu': agent.values[4],
+                'setpoint': setpoint
+            }
+        
+        animation_init(simulation_params)
+        
+
+
+        
+

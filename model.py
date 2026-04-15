@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import random
 from scipy.special import gamma
+import time
 
 
 
@@ -12,7 +13,7 @@ class ControlBase():
         self.physical_params = {
         "l" : 30.0,  # length of the arm
         "m" : 20.0,  # mass of the arm
-        "k" : [5.0], # spring constants
+        "k" : [1.0], # spring constants
         "kl" : [9.0], #spring lengths
         "kp" : [(-37, 10)], # spring positions
         "damping" : 0.9 # damping coefficient
@@ -71,22 +72,44 @@ class ControlBase():
         return velocity, position
     
 class PIDController(ControlBase):
-    def __init__(self, setpoint=2*math.pi/3):
+    def __init__(self, setpoint):
         super().__init__()
         self.Kp = 0
         self.Ki = 0
         self.Kd = 0
-        self.lam = 0
-        self.mu = 0
+        self.lam = 1.0 
+        self.mu = 1.0
+
         self.setpoint = setpoint
-        self.previous_error = [0]
+
+        self.error_history = []
         self.current_PID = 0
+        self.filtered_der = 0.0
+
+        self.max_mem = 40
+        self.u_min = -100.0
+        self.u_max = 100.0
+        self.alpha = 0.2  # derivative smoothing
+
+        # Coefficients cache
+        self.int_coeffs = None
+        self.der_coeffs = None
+    
+    def fractional_coeffs(self, order, N):
+            coeffs = [1.0]
+            for k in range(1, N):
+                coeffs.append(coeffs[-1] * (1 - (order + 1) / k))
+            return coeffs
     
     def reset(self):
         self.running_params["angle"] = 0.0
         self.running_params["angular_velocity"] = 0.0
         self.previous_error = [0]
         self.current_PID = 0
+
+        self.error_history = []
+        self.current_PID = 0
+        self.filtered_der = 0.0
     
     def set_PID_params(self, P, I, D, lam, mu, setpoint=None):
         self.Kp = P
@@ -94,34 +117,56 @@ class PIDController(ControlBase):
         self.Kd = D
         self.lam = lam
         self.mu = mu
+        
         if setpoint is not None:
             self.setpoint = setpoint
-
-    def compute_control(self, current_angle):  # implement FOPID
-        Kp, Ki, Kd, lam, mu = map(self.__dict__.get, ("Kp", "Ki", "Kd", "lam", "mu"))
-        dt = self.running_params["time_step"]
         
+        self.int_coeffs = self.fractional_coeffs(self.lam, self.max_mem)
+        self.der_coeffs = self.fractional_coeffs(self.mu, self.max_mem)
+
+    def compute_control(self, current_angle):
+        dt = self.running_params["time_step"]
+
         error = self.setpoint - current_angle
-        self.previous_error.append(error)
-        N = len(self.previous_error)
 
-        # --- Helper function: safe fractional coefficients ---
-        def fractional_coeffs(alpha, N):
-            coeffs = [1.0]
-            for k in range(1, N):
-                coeffs.append(coeffs[k-1] * (alpha - k + 1) / k)
-            return coeffs
+        self.error_history.insert(0, error)
+        if len(self.error_history) > self.max_mem:
+            self.error_history.pop()
 
-        # Fractional Integral
-        int_coeffs = fractional_coeffs(lam, N)
-        frac_int = sum(c * e for c, e in zip(int_coeffs[::-1], self.previous_error)) * dt**lam
+        e_hist = self.error_history
+        n = len(e_hist)
 
-        # Fractional Derivative
-        der_coeffs = fractional_coeffs(mu, N)
-        frac_der = sum(c * e for c, e in zip(der_coeffs[::-1], self.previous_error)) / dt**mu
 
-        # Compute control force
-        u = Kp * error + Ki * frac_int + Kd * frac_der
+        if self.int_coeffs is None or self.der_coeffs is None:
+            self.int_coeffs = self.fractional_coeffs(self.lam, self.max_mem)
+            self.der_coeffs = self.fractional_coeffs(self.mu, self.max_mem)
+
+
+        frac_int = sum(
+            self.int_coeffs[i] * e_hist[i]
+            for i in range(n)
+        ) * (dt ** self.lam)
+
+        raw_der = sum(
+            self.der_coeffs[i] * e_hist[i]
+            for i in range(n)
+        ) / (dt ** self.mu)
+
+        self.filtered_der = (
+            self.alpha * raw_der +
+            (1 - self.alpha) * self.filtered_der
+        )
+
+        frac_der = self.filtered_der
+
+        u = (
+            self.Kp * error +
+            self.Ki * frac_int +
+            self.Kd * frac_der
+        )
+
+        #u = max(self.u_min, min(self.u_max, u))
+
         self.current_PID = u
         return u
     
@@ -151,41 +196,52 @@ class PIDController(ControlBase):
         pos = position_history
         vel = velocity_history
         dt = self.running_params["time_step"]
-        T = len(pos) * dt
 
-        error = [setpoint - p for p in pos]
-        iae = sum(abs(e) for e in error) * dt
-
-        overshoot = max(p - setpoint for p in pos)
-        overshoot_penalty = max(0.0, overshoot)**2
-
-        tol = 0.02 * abs(setpoint) if abs(setpoint) > 1e-6 else 0.02
-        settled_idx = None
-        for i in range(len(pos)):
-            if all(abs(error[j]) < tol for j in range(i, len(error))):
-                settled_idx = i
-                break
-
-        if settled_idx is None:
-            settling_penalty = T * 5.0
-        else:
-            settling_time = settled_idx * dt
-            settling_penalty = settling_time
-
-        vel_rms = (sum(v**2 for v in vel) / len(vel))**0.5
-        oscillation_penalty = vel_rms
-
-        if any(p != p or p == float('inf') or p == float('-inf') for p in pos):
+        
+        if any(p != p or abs(p) == float('inf') for p in pos):
             return 1e9
 
-        if max(abs(p) for p in pos) > 10 * abs(setpoint + 1e-6):
-            return 1e8
+        max_pos = max(abs(p) for p in pos)
+        if max_pos > 2 * abs(setpoint) + 1e-6:
+            return 1e7  # unstable / runaway
+
+
+        error = [setpoint - p for p in pos]
+
+
+        iae = sum(abs(e) for e in error) * dt
+
+        overshoot = max(0.0, max(p - setpoint for p in pos))
+        overshoot_penalty = overshoot**2
+
+
+        sign_changes = sum(
+            1 for i in range(1, len(error))
+            if error[i] * error[i - 1] < 0
+        )
+
+        oscillation_penalty = sign_changes**2
+
+        vel_energy = sum(v*v for v in vel) / (len(vel) + 1e-6)
+
+
+        if hasattr(self, "control_history") and len(self.control_history) > 1:
+            u = self.control_history
+            control_effort = sum(abs(u[i] - u[i-1]) for i in range(1, len(u)))
+        else:
+            control_effort = 0.0
+
+
+        final_error = abs(error[-1])
+        settling_penalty = final_error * 10.0
+
 
         fitness = (
-        1.0 * iae +
-        5.0 * overshoot_penalty +
-        3.0 * settling_penalty +
-        2.0 * oscillation_penalty
+            1.0 * iae +
+            2.0 * overshoot_penalty +
+            3.0 * oscillation_penalty +
+            2.0 * vel_energy +
+            settling_penalty
         )
 
         return fitness
@@ -202,7 +258,7 @@ class PIDController(ControlBase):
 
 if __name__ == "__main__":
     # Example usage
-    pid_controller = PIDController(setpoint=2*math.pi/3)
+    pid_controller = PIDController(setpoint=math.pi)
     pid_controller.set_PID_params(P=2.0, I=0.5, D=1.0, lam=1, mu=1)
     velocity_history, position_history, set_points = pid_controller.sim_run(10.0)
     print("Final Position:", position_history[-1])

@@ -1,18 +1,21 @@
 import unittest
+from swarm import agent_swarm, PIDController
 
 class TestAgent(unittest.TestCase):
     def setUp(self):
         from swarm import Agent
-        self.agent = Agent()
+        self.agent = agent_swarm()
 
 
     def test_agent_initialization(self):
+        self.agent = agent_swarm()
 
         self.assertEqual(self.agent.position, 0.0)
         self.assertEqual(self.agent.velocity, 0.0)
         self.assertEqual(self.agent.angle, 0.0)
     
     def test_agent_update(self):
+        self.agent = agent_swarm()
         self.agent.position = 0.0
         self.agent.velocity = 0.0
         self.agent.update(force=10.0, time_step=0.1)
@@ -39,12 +42,7 @@ class TestSwarm(unittest.TestCase):
         updated_positions = [agent.position for agent in swarm.agents]
         self.assertNotEqual(initial_positions, updated_positions)
 
-def suite():
-    suite = unittest.TestSuite()
-    suite.addTest(TestAgent())
-    suite.addTest(TestSwarm())
-    return suite
+
 
 if __name__ == '__main__':
-    runner = unittest.TextTestRunner()
-    runner.run(suite())
+    unittest.main()

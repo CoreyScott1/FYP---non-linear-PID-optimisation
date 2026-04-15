@@ -75,7 +75,6 @@ def plot_number_line(points, x_range=None, ax=None):
     plt.grid(True)
 
 def animate_number_line(points_history, x_range=None, interval=100):
-    """Animates a number line of an array of points with range"""
 
     if not points_history or not points_history[0]:
         return
@@ -194,92 +193,18 @@ def create_animation(physical_params, running_params, xPos, yPos, set_points_x, 
                                    interval=running_params["time_step"] * 1000, blit=True, repeat=True)
     plt.show()
     
-
-def plot_sector_convergence(swarm_or_histories, param_names=None):
-    """
-    Plot the convergence of each sector (parameter dimension) over iterations.
+def plot_points_vs_time(x_points, time_limit=10):
+    """Plot x points against time (0 to time_limit seconds)"""
+    time_array = np.linspace(0, time_limit, len(x_points))
     
-    Args:
-        swarm_or_histories: Either a swarm object or list of agent histories
-        param_names: Optional list of parameter names (default: ['P', 'I', 'D', 'Gamma', 'Mu'])
-    """
-    # Extract histories
-    if hasattr(swarm_or_histories, 'agents'):
-        # It's a swarm object
-        histories = [agent.History for agent in swarm_or_histories.agents]
-    else:
-        # It's already a list of histories
-        histories = swarm_or_histories
-    
-    if not histories or not histories[0]:
-        print("No history data available")
-        return
-    
-    # Set default parameter names
-    if param_names is None:
-        param_names = ['P', 'I', 'D', 'Gamma', 'Mu']
-    
-    num_params = len(histories[0][0][0])  # Number of parameters
-    num_iterations = len(histories[0])     # Number of iterations
-    
-    # Extract best values and fitness for each iteration
-    best_fitness_per_iteration = []
-    best_params_per_iteration = [[] for _ in range(num_params)]
-    avg_params_per_iteration = [[] for _ in range(num_params)]
-    
-    for iteration in range(num_iterations):
-        best_fitness = float('inf')
-        best_params = None
-        
-        # Collect all parameter values and fitness for this iteration
-        all_params = [[] for _ in range(num_params)]
-        
-        for agent_history in histories:
-            if iteration < len(agent_history):
-                params, fitness = agent_history[iteration]
-                
-                if fitness < best_fitness:
-                    best_fitness = fitness
-                    best_params = params
-                
-                for param_idx in range(num_params):
-                    all_params[param_idx].append(params[param_idx])
-        
-        best_fitness_per_iteration.append(best_fitness)
-        
-        for param_idx in range(num_params):
-            best_params_per_iteration[param_idx].append(best_params[param_idx])
-            avg_params_per_iteration[param_idx].append(np.mean(all_params[param_idx]))
-    
-    # Create figure with subplots
-    fig, axes = plt.subplots(num_params + 1, 1, figsize=(12, 3 * (num_params + 1)))
-    
-    iterations = np.arange(1, num_iterations + 1)
-    
-    # Plot fitness convergence (top subplot)
-    axes[0].plot(iterations, best_fitness_per_iteration, 'b-', linewidth=2, label='Best Fitness')
-    axes[0].set_xlabel('Iteration')
-    axes[0].set_ylabel('Fitness (Error)')
-    axes[0].set_title('Best Fitness Convergence')
-    axes[0].grid(True, alpha=0.3)
-    axes[0].legend()
-    
-    # Plot each parameter's convergence
-    for param_idx, param_name in enumerate(param_names[:num_params]):
-        ax = axes[param_idx + 1]
-        ax.plot(iterations, best_params_per_iteration[param_idx], 'b-', linewidth=2, 
-                label='Best Value', marker='o', markersize=4)
-        ax.plot(iterations, avg_params_per_iteration[param_idx], 'r--', linewidth=1.5, 
-                label='Average Value', marker='s', markersize=3, alpha=0.7)
-        ax.set_xlabel('Iteration')
-        ax.set_ylabel('Parameter Value')
-        ax.set_title(f'Sector {param_idx + 1}: Parameter {param_name} Convergence')
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-    
+    plt.figure(figsize=(10, 6))
+    plt.plot(time_array, x_points, 'b-', linewidth=2)
+    plt.xlabel('Time (s)')
+    plt.ylabel('X Position (m)')
+    plt.title('X Position vs Time')
+    plt.grid(True)
     plt.tight_layout()
     plt.show()
-
 
 if __name__ == "__main__":
     #test data
