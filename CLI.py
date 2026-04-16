@@ -95,8 +95,8 @@ class CLI():
 
 
     def get_user_choice(self): #used for default cmd when not in menu
-        print("Please select an option: \n Save\n Load\n Run optimization\n Run simulation\n Animation Nav\n Exit")
-        response = self.loose_match_prompt(["save", "load", "run optimisation", "run simulation", "animation nav", "exit"])
+        print("Please select an option: \n Save\n Load\n Run optimization\n Animate\n Exit")
+        response = self.loose_match_prompt(["save", "load", "run optimisation" "animate", "exit"])
         return response
     
     def get_optimisation_params(self):
@@ -112,22 +112,6 @@ class CLI():
             ["yes", "no"]
         ]
         responses = self.collection_prompt(collection_meassages, ["type", "type", "loose_match"], collection_constraints)
-        return responses
-        
-
-    def get_simulation_params(self, agent_range):
-
-        collection_meassages = [
-            "Enter the setpoint: ",
-            "Enter the time duration: ",
-            "Select an agent to simulate: "
-        ]
-        collection_constraints = [
-            float,
-            float,
-            agent_range 
-        ]
-        responses = cli.collection_prompt(collection_meassages, ["type", "type", "loose_match"], collection_constraints)
         return responses
     
     def get_load_params(self, available_swarms):
@@ -147,84 +131,7 @@ class CLI():
         name = self.type_prompt("Enter a name for the saved swarm: ", str)
         return name, all_params
 
-
-    def animation_nav(self,  loadedSwarmInfo):
-        """
-        select speficic iterations and elements of a swarm
-        for inbetween get_load and get_simulation, called by main
-        also can be used to navigate swarm stats, might break into seperate function
-        """
-        nav = True
-        while nav == True:
-            print("Loaded swarm:")
-            for key, value in loadedSwarmInfo.items():
-                print(f"{key}: {value}")
-            print("Select an option: \n Iteration Navigation\n Select Agent\n Exit")
-            response = self.loose_match_prompt(["iteration navigation", "select agent", "exit"])
-            print(f"Response: {response}")
-            match response:
-                case "iteration navigation":
-                    try:
-
-                        if len(loadedSwarmInfo['agentData'][0]['history']) == 0:
-                            print("No history data available for this swarm.")
-                            continue
-
-                        print(f"Iteration count: {len(loadedSwarmInfo['agentData'][0]['history'])}")
-
-                        if self.confirmation_prompt("Do you want to view a specific iteration? (yes/no): "):
-                            iteration = self.int_range_prompt("Enter the iteration number to view: ", 0, len(loadedSwarmInfo['agentData'][0]['history']) - 1)
-
-                            print(f"Viewing iteration {iteration}...")
-                            
-                            iteration_data = [agent['history'][iteration] for agent in loadedSwarmInfo['agentData']]
-
-                            for agent in iteration_data:
-                                print(f"Agent values: {agent['values']}, fitness: {agent['fitness']}")
-                            
-                            response = self.loose_match_prompt(["yes", "no"], self.type_prompt("View another iteration? (yes/no) or  ", str))
-                        
-                        else:
-                            print("Starting at iteration 0, enter < to go back an iteration, > to go forward an iteration, or exit to stop navigation.")
-                            iteration = 0
-                            while True:
-                                print(f"Viewing iteration {iteration}...")
-                                iteration_data = [agent['history'][iteration] for agent in loadedSwarmInfo['agentData']]
-
-                                for agent in iteration_data:
-                                    print(f"Agent values: {agent['values']}, fitness: {agent['fitness']}")
-                                
-                                nav_response = self.loose_match_prompt(["<", ">", "exit"], self.type_prompt("Enter <, >, or exit: ", str))
-                                if nav_response == "<":
-                                    iteration = max(0, iteration - 1)
-                                elif nav_response == ">":
-                                    iteration = min(len(loadedSwarmInfo['agentData'][0]['history']) - 1, iteration + 1)
-                                else:
-                                    break
-                    except Exception as e:
-                        print(f"Error retrieving iteration data: {e}")
-
-                case "select agent":
-
-                    try:
-
-                        print(f"Number of agents: {len(loadedSwarmInfo['agentData'])}")
-                        selected_agent = self.range_prompt("Enter the agent number to view: ", 1, len(loadedSwarmInfo['agentData'])) - 1
-                        print(f"Viewing agent {selected_agent}...")
-                        agent_data = loadedSwarmInfo['agentData'][selected_agent]
-                        for i, iteration in enumerate(agent_data['history']):
-                            print(f"Iteration {i}: Agent values: {iteration['values']}, fitness: {iteration['fitness']}")
-                        
-                        response = self.range_prompt("Select iteration to animate (enter -1 to skip): ", -1, len(agent_data['history']) - 1)
-                        if response != -1:
-                            print(f"Animating iteration {response} for agent {selected_agent}...")
-                            iteration_data = agent_data['history'][response]
-                            return ("run animation", iteration_data) #return data to animate in main
-                    except Exception as e:
-                        print(f"Error retrieving agent data: {e}")
-                    
-                case "exit":                    
-                    return "back"
+        
 
 if __name__ == "__main__":
     cli = CLI()

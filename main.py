@@ -19,7 +19,7 @@ def animation_init(simulation_params):
     set_points_y = [pid_controller.physical_params["l"] * math.sin(angle) for angle in set_points]
 
     # Create and display animation
-    #create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
+    create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
 
     plot_points_vs_time(velocity_history)
 
@@ -96,13 +96,6 @@ def CLI_loop():
                 params = cli.get_optimisation_params()
                 loadedSwarm = optimize(params)
 
-            case "run simulation":
-                availableAgents = range(len(loadedSwarm[0].agents)) if loadedSwarm else 0
-                if availableAgents != 0:
-                    params = cli.get_simulation_params(availableAgents)
-                else:
-                    print("Loaded swarm contains no agents. Please load a valid swarm before running a simulation.")
-
             case "save":
                 if loadedSwarm == []:
                     print("No swarm loaded. Please run an optimisation or load a swarm before saving.")
@@ -145,34 +138,41 @@ def CLI_loop():
                 skip = True
                 usrInput = "animation nav" #skip straight to animation nav after loading a swarm
             
-            case "animation nav":
-                sim_loop = True
-                while sim_loop:
+            case "animate":
+                print("Animating best agent from loaded swarm...")
 
-                    loadedSwarmInfo = {
-                        'iteration': loadedSwarm[1],
-                        'range_min': loadedSwarm[0].limit_min,
-                        'range_max': loadedSwarm[0].limit_max,
-                        'dimension': len(loadedSwarm[0].agents[0].values),
-                        'agentData': loadedSwarm[0].get_agent_data()
-                    }
+                simulation_params = {
+                'P': loadedSwarm[0].get_best_agent().values[0],
+                'I': loadedSwarm[0].get_best_agent().values[1],
+                'D': loadedSwarm[0].get_best_agent().values[2],
+                'gamma': loadedSwarm[0].get_best_agent().values[3],
+                'mu': loadedSwarm[0].get_best_agent().values[4],
+                'setpoint': setpoint
+                }
+                
+                animation_init(simulation_params)
 
-                    response = cli.animation_nav(loadedSwarmInfo)
-                    match response[0]:
-                        case "run animation":
-                            animation_init(response[1])
-                        case "back":
-                            sim_loop = False
+                agent_history = swarm.get_agent_histories()
+            
+                # Restructure from agents -> frames -> (parameters, fitness) to frames -> parameters -> agent values
+                num_frames = len(agent_history[0]) if agent_history else 0
+                num_params = len(agent_history[0][0][0]) if agent_history and agent_history[0] else 0
+                formatted_histories = [
+                    [[agent[frame_idx][0][param_idx] for agent in agent_history] for param_idx in range(num_params)]
+                    for frame_idx in range(num_frames)
+                ]
+                ranges = [(0, 50), (0, 50), (0, 50), (0, 1), (0, 1)]
 
-            case "exit":
-                print("Exiting program.")
-                run = False
-                break
+                animate_number_line(formatted_histories, x_range=ranges, interval=500)
+
+
+                        
+
 
 
 if __name__ == "__main__":
     bestagents = []
-    
+    setpoint = 4
     for x in save.get_all_loadable_swarms():
     
         loadedSwarmInfo = save.load_swarm_state(x)
@@ -191,7 +191,7 @@ if __name__ == "__main__":
             agent.velocity = loadedSwarmInfo['agents'][i]['velocity']
             agent.History = loadedSwarmInfo['agents'][i]['history']
         
-        setpoint = 4
+        
         bestagents.append(loadedSwarm[0].get_best_agent())
     print("Best Agents from all loaded swarms:")
     for agent in bestagents:
@@ -202,10 +202,12 @@ if __name__ == "__main__":
                 'D': agent.values[2],
                 'gamma': agent.values[3],
                 'mu': agent.values[4],
-                'setpoint': setpoint
+                'setpoint': setpoint 
             }
-        
-        animation_init(simulation_params)
+        print(agent.fitness)
+
+
+        #animation_init(simulation_params)
         
 
 
