@@ -1,7 +1,7 @@
 import math
 import random
 from model import PIDController
-import threading
+import time
 
 pid_controller = PIDController(setpoint=2*math.pi/3)
 
@@ -29,7 +29,7 @@ class agent:
                 pass
     
     def update_history(self):
-        self.History.append((self.values, self.fitness))
+        self.History.append((self.values.copy(), self.fitness))
 
 class agent_swarm:
     def __init__(self, no_of_agents, dimension=5, range_min=[0.0, 0.0, 0.0, 0.7, 0.3], range_max=[15.0, 5.0, 3.0, 1.0, 0.8], setpoint=math.pi):
@@ -40,7 +40,7 @@ class agent_swarm:
         self.social_weight = 1.826533
         self.limit_min = range_min
         self.limit_max = range_max
-        self.time_step = 0.2
+        self.time_step = 0.05
         self.setpoint = setpoint
 
 
@@ -102,7 +102,7 @@ class agent_swarm:
                 if ag.values[i] > self.limit_max[i] or ag.values[i] < self.limit_min[i]:
                     ag.values[i] = random.uniform(self.limit_min[i], self.limit_max[i]) # random clamping
             
-            if random.random() < 0.1: # random mutation
+            if random.random() < 0.05: # random mutation
                 ag.values[random.randint(0, len(ag.values)-1)] = random.uniform(self.limit_min[random.randint(0, len(self.limit_min)-1)], self.limit_max[random.randint(0, len(self.limit_max)-1)])
 
     def get_agent_histories(self):

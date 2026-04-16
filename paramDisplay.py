@@ -28,22 +28,6 @@ def plot_velocity_position_history(velocity_history, position_history, time_limi
 
 
 
-def plot_all_params(pointArray, x_ranges=None):
-    num_plots = len(pointArray)
-    
-    # Create figure with subplots
-    fig, axes = plt.subplots(num_plots, 1, figsize=(12, 2 * num_plots))
-    
-    # Handle single plot case (axes won't be an array)
-    if num_plots == 1:
-        axes = [axes]
-    
-    for i, point in enumerate(pointArray):
-        x_range = x_ranges[i] if x_ranges and i < len(x_ranges) else None
-        plot_number_line(point, x_range=x_range, ax=axes[i])
-    
-    plt.tight_layout()
-    plt.show()
 
 
 
@@ -205,20 +189,4 @@ def plot_points_vs_time(x_points, time_limit=10):
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
-if __name__ == "__main__":
-    #test data
-    param_array = [
-        [10.0, 10.0, 8.0, 0.4, 0.7],
-        [12.0, 8.0, 6.0, 0.5, 0.6],
-        [8.0, 12.0, 10.0, 0.3, 0.8]
-    ]
-
-    for x in enumerate(param_array):
-        print(f"Parameter Set {x[0]+1}: {x[1]}")   
-
-    plot_all_params(param_array)
-
-
-
 
