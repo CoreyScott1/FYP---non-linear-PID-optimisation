@@ -4,7 +4,6 @@ from model import PIDController
 from swarm import agent_swarm
 from paramDisplay import *
 from CLI import CLI
-import numpy as np
 import math
 import save
 
@@ -27,6 +26,8 @@ def animation_init(simulation_params):
 
 
 def optimize(params):
+    start_time = time.time()
+    iteration_time = []
     setpoint = 4
     swarm = agent_swarm(no_of_agents=params[0])
     iterations = params[1]
@@ -38,10 +39,18 @@ def optimize(params):
     pid_controller = PIDController(setpoint)
 
     for i in range(iterations):
+        iteration_start = time.time()
         print(f"Iteration {i+1}/{iterations}")
         swarm.update_positions(iteration=i)
         print(f"Best Agent Fitness: {swarm.get_best_agent().fitness}")
         print(f"Best Agent Parameters: {swarm.get_best_agent().values}")
+        iteration_time.append(time.time()-iteration_start)
+    end_time = time.time()
+    total_time = end_time-start_time
+
+    print(f"Total runtime:{total_time}")
+    print(f"Average iteration time: {total_time/iterations}")
+    print(f"Slowest: {max(iteration_time)}, Fastest: {min(iteration_time)}")
     if show_animation:
 
         simulation_params = {
