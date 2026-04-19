@@ -127,7 +127,7 @@ def CLI_loop():
 
             case "load":
                 load_params = cli.get_load_params(save.get_all_loadable_swarms())
-                # Implement loading logic here
+
                 loadedSwarmInfo = save.load_swarm_state(load_params)
                 if loadedSwarmInfo['iteration'] is None:
                     iteration = 0
@@ -148,7 +148,7 @@ def CLI_loop():
             
             case "animate":
                 print("Animating loaded swarm")
-                setpoint = cli.range_prompt("Enter the setpoint of the animation", 0, 2*math.pi)
+                setpoint = cli.range_prompt("Enter the setpoint of the animation: ", 0, 2*math.pi)
                 
 
                 simulation_params = {

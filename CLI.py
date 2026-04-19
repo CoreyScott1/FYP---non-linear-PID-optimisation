@@ -4,8 +4,9 @@ class CLI():
     def __init__(self):
         pass
 
-    def loose_match_prompt(self, options, response=None):
-        print(options)
+    def loose_match_prompt(self, options, response=None, print_options = True):
+        if print_options:
+            print(options)
 
         while True:  # replace recursion with loop
             try:
