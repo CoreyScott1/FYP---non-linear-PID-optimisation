@@ -177,16 +177,23 @@ def create_animation(physical_params, running_params, xPos, yPos, set_points_x, 
                                    interval=running_params["time_step"] * 1000, blit=True, repeat=True)
     plt.show()
     
-def plot_points_vs_time(x_points, time_limit=10):
-    """Plot x points against time (0 to time_limit seconds)"""
-    time_array = np.linspace(0, time_limit, len(x_points))
-    
+def plot_points_vs_time(x_points_list, time_limit=10, labels=None):
+    """Plot multiple x point arrays against time"""
     plt.figure(figsize=(10, 6))
-    plt.plot(time_array, x_points, 'b-', linewidth=2)
-    plt.xlabel('Time (s)')
-    plt.ylabel('X Position (m)')
-    plt.title('X Position vs Time')
+    
+    for i, x_points in enumerate(x_points_list):
+        time_array = np.linspace(0, time_limit, len(x_points))
+
+
+        if x_points_list and len(x_points_list) > 1:
+            plt.plot(time_array, x_points, linewidth=2, label=f'Line {i+1}')
+        else:
+            plt.plot(time_array, x_points, linewidth=2)
+    
+    plt.xlabel(labels[0])
+    plt.ylabel(labels[1])
+    plt.title(labels[2])
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
     plt.show()
-
