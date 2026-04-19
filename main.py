@@ -22,9 +22,6 @@ def animation_init(simulation_params):
     # Create and display animation
     create_animation(pid_controller.physical_params, pid_controller.running_params, xPos, yPos, set_points_x, set_points_y)
 
-    plot_points_vs_time(velocity_history)
-
-
 def optimize(params):
     start_time = time.time()
     iteration_time = []
@@ -150,7 +147,9 @@ def CLI_loop():
                 usrInput = "animation nav" #skip straight to animation nav after loading a swarm
             
             case "animate":
-                print("Animating best agent from loaded swarm...")
+                print("Animating loaded swarm")
+                setpoint = cli.range_prompt("Enter the setpoint of the animation", 0, 2*math.pi)
+                
 
                 simulation_params = {
                 'P': loadedSwarm[0].get_best_agent().values[0],
@@ -162,131 +161,72 @@ def CLI_loop():
                 }
 
                 animation_init(simulation_params)
+                agent_history = loadedSwarm[0].get_agent_histories()
 
-                agent_history = swarm.get_agent_histories()
+
+                formatted_histories = []
+                for frame in range(len(agent_history[0])): #for each frame
+                    frame_data = []
+                    for param in range(len(agent_history[0][0][0])): #for each parameter
+                        param_data = []
+                        for agent in agent_history: #for each agent
+                            param_data.append(agent[frame][0][param]) #append the parameter value for this frame and agent
+                        frame_data.append(param_data)
+                    formatted_histories.append(frame_data)
+                
+                ranges = [(0, 15), (0, 5), (0, 3), (0.7, 1), (0.3, 0.8)]
+                
+                animate_number_line(formatted_histories, x_range=ranges, interval=700)
+
+                best_agent_per_frame = []
+                for frame in range(len(agent_history[0])):
+                    best_agent = None
+                    best_fitness = float('inf')
+                    for agent in agent_history:
+                        if agent[frame][1] < best_fitness:
+                            best_fitness = agent[frame][1]
+                            best_agent = agent
+                    best_agent_per_frame.append(best_agent)
+                
+                best_velocity_history = []
+                
+                for frame in best_agent_per_frame:
+                    simulation_params = {
+                        'P': frame[0][0][0],
+                        'I': frame[0][0][1],
+                        'D': frame[0][0][2],
+                        'gamma': frame[0][0][3],
+                        'mu': frame[0][0][4],
+                        'setpoint': setpoint
+                    }
+                    
+                    pid_controller = PIDController(simulation_params['setpoint'])
+                    pid_controller.set_PID_params(simulation_params['P'], simulation_params['I'], simulation_params['D'], simulation_params['gamma'], simulation_params['mu'], simulation_params['setpoint'])
+                    velocity_history, position_history, set_points = pid_controller.sim_run(time_limit=1.0)
+                    best_velocity_history.append(velocity_history)
+                
+                fitness_plot_data = []
+                for frame in best_agent_per_frame:
+                    if frame[1][1] < 300:
+                        fitness_plot_data.append(frame[1][1])
+                print(fitness_plot_data)
+
+                fitness_plot_data.reverse()
+                
+                plot_points_vs_time([fitness_plot_data], time_limit=1, labels=["Best Fitness Over Time", "Fitness", "Time (s)"])
+                
+                plot_points_vs_time(best_velocity_history, time_limit=1, labels=["Best Velocity Over Time", "Velocity", "Time (s)"])
+
+                animation_init(simulation_params)
             
-                # Restructure from agents -> frames -> (parameters, fitness) to frames -> parameters -> agent values
-                num_frames = len(agent_history[0]) if agent_history else 0
-                num_params = len(agent_history[0][0][0]) if agent_history and agent_history[0] else 0
-                formatted_histories = [
-                    [[agent[frame_idx][0][param_idx] for agent in agent_history] for param_idx in range(num_params)]
-                    for frame_idx in range(num_frames)
-                ]
-                ranges = [(0, 50), (0, 50), (0, 50), (0, 1), (0, 1)]
+            case "exit":
+                break
 
-                animate_number_line(formatted_histories, x_range=ranges, interval=500)
+
+                
 
 if __name__ == "__main__":
-    rapid_test = [
-        [100, 50, "no"]
-    #    [10, 10, "no"],
-    #    [20, 10, "no"]
-        
-    ]
-
-    for params in rapid_test:
-        print(f"Running optimization with params: {params}")
-        swarm = optimize(params)
-        print("\n\n")
-        save.save_swarm_state(swarm[0], swarm[1], f"rapid_test_{params[0]}agents_{params[1]}iterations")
-
-
-
-    
-    for x in save.get_all_loadable_swarms():
-        bestagents = []
-        setpoint = math.pi
-    
-        loadedSwarmInfo = save.load_swarm_state(x)
-        if loadedSwarmInfo['iteration'] is None:
-            iteration = 0
-        else:
-            iteration = loadedSwarmInfo['iteration']
-        loadedSwarm = [agent_swarm(no_of_agents=loadedSwarmInfo['number_of_agents']), iteration]
-        loadedSwarm[0].limit_min = loadedSwarmInfo['range_min']
-        loadedSwarm[0].limit_max = loadedSwarmInfo['range_max']
-
-        
-        for i, agent in enumerate(loadedSwarm[0].agents):
-            agent.values = loadedSwarmInfo['agents'][i]['values']
-            agent.fitness = loadedSwarmInfo['agents'][i]['fitness']
-            agent.bestPosition = loadedSwarmInfo['agents'][i]['best_position']
-            agent.velocity = loadedSwarmInfo['agents'][i]['velocity']
-            agent.History = loadedSwarmInfo['agents'][i]['history']
-        
-        agent_history = loadedSwarm[0].get_agent_histories()
-
-
-
-        formatted_histories = []
-        for frame in range(len(agent_history[0])): #for each frame
-            frame_data = []
-            for param in range(len(agent_history[0][0][0])): #for each parameter
-                param_data = []
-                for agent in agent_history: #for each agent
-                    param_data.append(agent[frame][0][param]) #append the parameter value for this frame and agent
-                frame_data.append(param_data)
-            formatted_histories.append(frame_data)
-        
-        best_agent_per_frame = []
-        for frame in range(len(agent_history[0])):
-            best_agent = None
-            best_fitness = float('inf')
-            for agent in agent_history:
-                if agent[frame][1] < best_fitness:
-                    best_fitness = agent[frame][1]
-                    best_agent = agent
-            best_agent_per_frame.append(best_agent)
-        
-        best_velocity_history = []
-        
-        for frame in best_agent_per_frame:
-            simulation_params = {
-                'P': frame[0][0][0],
-                'I': frame[0][0][1],
-                'D': frame[0][0][2],
-                'gamma': frame[0][0][3],
-                'mu': frame[0][0][4],
-                'setpoint': setpoint
-            }
-            
-            pid_controller = PIDController(simulation_params['setpoint'])
-            pid_controller.set_PID_params(simulation_params['P'], simulation_params['I'], simulation_params['D'], simulation_params['gamma'], simulation_params['mu'], simulation_params['setpoint'])
-            velocity_history, position_history, set_points = pid_controller.sim_run(time_limit=1.0)
-            best_velocity_history.append(velocity_history)
-        
-        fitness_plot_data = []
-        for frame in best_agent_per_frame:
-            if frame[1][1] < 300:
-                fitness_plot_data.append(frame[1][1])
-        print(fitness_plot_data)
-
-        fitness_plot_data.reverse()
-        
-        plot_points_vs_time([fitness_plot_data], time_limit=1, labels=["Best Fitness Over Time", "Fitness", "Time (s)"])
-        
-        plot_points_vs_time(best_velocity_history, time_limit=1, labels=["Best Velocity Over Time", "Velocity", "Time (s)"])
-
-        ranges = [(0, 15), (0, 5), (0, 3), (0.7, 1), (0.3, 0.8)]
-
-
-        animate_number_line(formatted_histories, x_range=ranges, interval=700)
-
-        bestagents.append(loadedSwarm[0].get_best_agent())
-    print("Best Agents from all loaded swarms:")
-    for agent in bestagents:
-
-        simulation_params = {
-                'P': agent.values[0],
-                'I': agent.values[1],
-                'D': agent.values[2],
-                'gamma': agent.values[3],
-                'mu': agent.values[4],
-                'setpoint': setpoint 
-            }
-        print(agent.fitness, agent.values)
-
-        #animation_init(simulation_params)
+    CLI_loop()
 
 
 

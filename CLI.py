@@ -7,32 +7,42 @@ class CLI():
     def loose_match_prompt(self, options, response=None):
         print(options)
 
-        candidate_options = []
-        try:
-    
-            if response == None:
-                print("getting response")
-                response = list(input().lower().replace(" ", ""))
+        while True:  # replace recursion with loop
+            try:
+                if response is None:
+                    response = input().lower().replace(" ", "")
 
-            for option in options:
-                indexList = []
-                for letter in response:
-                    if letter in option:
-                        indexList.append(option.index(letter))
-                if list(option)[0] == response[0]: 
-                    if indexList == sorted(indexList):
-                
-                        candidate_options.append((option, len(indexList)))
-            print(f"Candidate options: {candidate_options}")
-            if len(candidate_options) > 0:
-                return max(candidate_options, key=lambda x: x[1])[0] if candidate_options else None
-            
-            print("No valid options found, please try again.")
-            return self.loose_match_prompt(options)
-        
-        except Exception as e:
-            print("invalid input, please try again")
-            return self.loose_match_prompt(options)
+                candidate_options = []
+
+                for option in options:
+                    clean_option = option.lower().replace(" ", "")
+
+                    i = 0
+                    match_count = 0
+
+                    # check letters in order properly
+                    for letter in response:
+                        while i < len(clean_option) and clean_option[i] != letter:
+                            i += 1
+                        if i < len(clean_option):
+                            match_count += 1
+                            i += 1
+
+                    # ensure first letter matches
+                    if clean_option and response and clean_option[0] == response[0]:
+                        if match_count > 0:
+                            candidate_options.append((option, match_count))
+
+
+                if candidate_options:
+                    return max(candidate_options, key=lambda x: x[1])[0]
+
+                print("No valid options found, please try again.")
+                response = None  # reset so it asks again
+
+            except Exception as e:
+                print("Invalid input, please try again.")
+                response = None
 
     def confirmation_prompt(self, message, default_yes=True):
         print(message)
@@ -96,7 +106,7 @@ class CLI():
 
     def get_user_choice(self): #used for default cmd when not in menu
         print("Please select an option: \n Save\n Load\n Run optimization\n Animate\n Exit")
-        response = self.loose_match_prompt(["save", "load", "run optimisation" "animate", "exit"])
+        response = self.loose_match_prompt(["save", "load", "run optimisation", "animate", "exit"])
         return response
     
     def get_optimisation_params(self):
